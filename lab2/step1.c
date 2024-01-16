@@ -16,9 +16,16 @@
 
 #define BUF_SIZE 2048 // buffer size
 
+// data structure to hold copy
+typedef struct copy_struct {
+  int thread_id;
+  char *src_filename;
+  char *dst_filename;
+} COPY;
+
 // copies from src_filename to dst_filename using functions fopen(),
 // fread(), fwrite(), fclose()
-int func_copy(char *src_file, char *dst_file) {
+static int func_copy(char *src_file, char *dst_file) {
   FILE *src = fopen(src_file, "r"); // opens a file for reading
   if (src == NULL) {                // fopen() error checking
     fprintf(stderr, "unable to open %s for reading: %i\n", src_file, errno);
@@ -46,11 +53,51 @@ int func_copy(char *src_file, char *dst_file) {
   return 0;
 }
 
-int main(int argc, char *argv[]) {
-  if (argc != 3) { // check correct usage
+// thread function to copy one file
+static void *copy_thread(void *arg) {
+  COPY params = *(COPY *)arg; // cast/dereference void* to copy_struct
+  printf("thread[%i] - copying %s to %s\n", params.thread_id,
+         params.src_filename, params.dst_filename);
+  // call file copy function
+  func_copy(params.src_filename, params.dst_filename);
+
+  pthread_exit(NULL);
+}
+
+int main(int argc, char **argv) {
+  if (argc < 3) { // check correct usage
     fprintf(stderr, "usage: %s <src_filename> <dst_filename>\n", argv[0]);
     exit(1);
   }
-  func_copy(argv[1], argv[2]);
-  return 0;
+
+  int i;
+  char *src_filename;
+  char *dst_filename;
+  int num_threads = (argc - 1) / 2; // number of threads to create
+  // char *src_filenames[num_threads]; // array of source files
+  // char *dst_filenames[num_threads]; // array of desintation files
+
+  pthread_t threads[num_threads];  // initialize threads
+  COPY thread_params[num_threads]; // structure for each thread
+
+  // initialize thread parameters and create each copy thread
+  for (i = 0; i < num_threads; i++) {
+    src_filename = argv[i * 2 + 1];
+    dst_filename = argv[i * 2 + 2];
+    // src_filenames[i] = src_filename;
+    // dst_filenames[i] = dst_filename;
+
+    thread_params[i].thread_id = i;
+    thread_params[i].src_filename = src_filename;
+    thread_params[i].dst_filename = dst_filename;
+
+    pthread_create(&threads[i], NULL, copy_thread, (void *)&thread_params[i]);
+  }
+
+  // wait for all threads to finish
+  for (i = 0; i < num_threads; i++) {
+    pthread_join(threads[i], NULL);
+  }
+
+  pthread_exit(NULL);
 }
