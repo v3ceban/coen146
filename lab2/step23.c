@@ -39,14 +39,17 @@ int main(int argc, char **argv) {
   // Step 3: Packet Switching
   pPSusers = tPSusers;
   pPSusersNotBusy = 1 - pPSusers;
-  double pAllNotBusy = pow((1 - pPSusers), (nPSusers - 1));
-  // double pOneBusy = 0;
-  // double pExactlyOne = 0;
-  // double pTenBusy = 0;
-  // double pAnyTenBusy = 0;
+  double pAllNotBusy = pow(pPSusersNotBusy, (nPSusers - 1));
+  double pOneBusy = pPSusers * pow(pPSusersNotBusy, (nPSusers - 1));
+  double pExactlyOne =
+      nPSusers * (pPSusers * pow(pPSusersNotBusy, (nPSusers - 1)));
+  double pTenBusy = pow(pPSusers, 10) * pow(pPSusersNotBusy, (nPSusers - 10));
+  double pAnyTenBusy =
+      (factorial(nPSusers) / (factorial(10) * factorial((nPSusers - 10)))) *
+      pow(pPSusers, 10) * pow(pPSusersNotBusy, (nPSusers - 10));
   // double pTenMoreBusy = 0;
 
-  printf("3: Packet switching senario");
+  printf("3: Packet switching senario\n");
   printf("3a: The probability that a given (specific) user is busy "
          "transmitting = %f\n",
          pPSusers);
@@ -68,9 +71,9 @@ int main(int argc, char **argv) {
   printf("3g: The probability that any 10 users of nPSusers are transmitting "
          "and the others are idle = %lg\n",
          pAnyTenBusy);
-  printf("3h: The probability that more than 10 users of nPSusers are "
-         "transmitting and the others are idle = %lg\n",
-         pTenMoreBusy);
+  // printf("3h: The probability that more than 10 users of nPSusers are "
+  //        "transmitting and the others are idle = %lg\n",
+  //        pTenMoreBusy);
 
   return 0;
 }
