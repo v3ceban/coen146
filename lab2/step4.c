@@ -1,7 +1,8 @@
 // Name: Vladimir Ceban
 // Date: Jan. 16, 2024
 // Title: Lab2 - Step 4
-// Description:
+// Description: C program to calculate RTT times for Persistent and
+// Non-Persistent HTML connections
 
 #include <stdio.h>
 #include <stdlib.h>
