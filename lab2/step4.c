@@ -20,17 +20,17 @@ int main(int argc, char *argv[]) {
   int rtthttp = 47;
   int n, np;
 
-  printf("One object: %d msec\n", rtt0 + rtt1 + rtt2 + rtthttp);
+  printf("One object: %d msec\n", rtt0 + rtt1 + rtt2 + 2 * rtthttp);
   printf("Non-Persistent 6 objects: %d msec\n",
-         6 * (rtt0 + rtt1 + rtt2 + rtthttp));
+         rtt0 + rtt1 + rtt2 + 7 * 2 * rtthttp);
 
   // find how many np (parralel connections)
   np = atoi(argv[1]);
 
   printf("%d parallel connection - Persistent: %d msec\n", np,
-         rtt0 + rtt1 + rtt2 + rtthttp);
+         rtt0 + rtt1 + rtt2 + 2 * rtthttp + 6 / np * rtthttp);
   printf("%d parallel connection - Non-Persistent: %d msec\n", np,
-         np * (rtt0 + rtt1 + rtt2 + rtthttp));
+         rtt0 + rtt1 + rtt2 + 2 * rtthttp + 6 / np * rtthttp * 2);
 
   return 0;
 }

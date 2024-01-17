@@ -9,8 +9,8 @@
 #include <stdlib.h>
 
 static double factorial(double n) {
-  if (n == 1) {
-    return n;
+  if (n <= 1) {
+    return 1;
   }
   return (n * factorial(n - 1));
 }
@@ -47,9 +47,11 @@ int main(int argc, char **argv) {
   double pAnyTenBusy =
       (factorial(nPSusers) / (factorial(10) * factorial((nPSusers - 10)))) *
       pow(pPSusers, 10) * pow(pPSusersNotBusy, (nPSusers - 10));
-  double pTenMoreBusy = 0;
+  double pTenMoreBusy = 0.0;
   for (i = 11; i <= nPSusers; i++) {
-    pTenMoreBusy += (pow(nPSusers, i) * pow(pPSusersNotBusy, (nPSusers - i)));
+    pTenMoreBusy +=
+        (factorial(nPSusers) / (factorial(i) * factorial(nPSusers - i))) *
+        (pow(pPSusers, i) * pow(pPSusersNotBusy, (nPSusers - i)));
   }
 
   printf("3: Packet switching senario\n");
