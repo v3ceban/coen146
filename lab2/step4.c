@@ -8,7 +8,7 @@
 
 int main(int argc, char *argv[]) {
   if (argc != 2) { // check correct usage
-    fprintf(stderr, "usage: s <n connections> \n", argv[0]);
+    fprintf(stderr, "usage: %s <n connections> \n", argv[0]);
     exit(1);
   }
   // Declare and values to n (n connections), np (np parralel connections),
