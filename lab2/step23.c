@@ -1,5 +1,5 @@
 // Name: Vladimir Ceban
-// Date: Jan. 17, 2024
+// Date: Jan. 16, 2024
 // Title: Lab2 - Steps 2 and 3 – Circuit and Packet switching
 // Description: C program that implements quantitative comparisons between
 // circuit and packet switching
@@ -47,7 +47,10 @@ int main(int argc, char **argv) {
   double pAnyTenBusy =
       (factorial(nPSusers) / (factorial(10) * factorial((nPSusers - 10)))) *
       pow(pPSusers, 10) * pow(pPSusersNotBusy, (nPSusers - 10));
-  // double pTenMoreBusy = 0;
+  double pTenMoreBusy = 0;
+  for (i = 11; i <= nPSusers; i++) {
+    pTenMoreBusy += (pow(nPSusers, i) * pow(pPSusersNotBusy, (nPSusers - i)));
+  }
 
   printf("3: Packet switching senario\n");
   printf("3a: The probability that a given (specific) user is busy "
@@ -71,9 +74,9 @@ int main(int argc, char **argv) {
   printf("3g: The probability that any 10 users of nPSusers are transmitting "
          "and the others are idle = %lg\n",
          pAnyTenBusy);
-  // printf("3h: The probability that more than 10 users of nPSusers are "
-  //        "transmitting and the others are idle = %lg\n",
-  //        pTenMoreBusy);
+  printf("3h: The probability that more than 10 users of nPSusers are "
+         "transmitting and the others are idle = %lg\n",
+         pTenMoreBusy);
 
   return 0;
 }

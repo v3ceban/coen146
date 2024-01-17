@@ -1,5 +1,5 @@
 // Name: Vladimir Ceban
-// Date: Jan. 17, 2024
+// Date: Jan. 16, 2024
 // Title: Lab2 - Step 1 – C program to copy files using threads
 // Description: Receives a nummber of files, creates a number of threads and
 // copies files from src_filename to dst_filename using functions fopen(),
