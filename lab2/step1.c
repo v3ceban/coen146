@@ -5,14 +5,10 @@
 // copies files from src_filename to dst_filename using functions fopen(),
 // fread(), fwrite(), fclose().
 
-#include <errno.h>    // errno
-#include <fcntl.h>    // open(), close()
-#include <pthread.h>  // pthread_create()
-#include <stdio.h>    // fprintf(), fread(), fwrite(), fopen(), fclose()
-#include <stdlib.h>   // malloc(), free()
-#include <sys/mman.h> // mmap()
-#include <time.h>     // clock()
-#include <unistd.h>   // read(), write()
+#include <errno.h>   // errno
+#include <pthread.h> // pthread_create()
+#include <stdio.h>   // fprintf(), fread(), fwrite(), fopen(), fclose()
+#include <stdlib.h>  // malloc(), free()
 
 #define BUF_SIZE 2048 // buffer size
 
