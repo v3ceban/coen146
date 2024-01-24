@@ -1,4 +1,9 @@
-// TCP Client
+// Name: Vladimir Ceban
+// Date: Jan. 24, 2024
+// Title: Lab3 - Step 2 – TCP client
+// Description: C program for a TCP client that connects to a server. The client
+// requests a file to download from the server
+
 #include <netdb.h>
 #include <netinet/in.h>
 #include <stdio.h>

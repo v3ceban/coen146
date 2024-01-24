@@ -1,4 +1,10 @@
-// TCP Server for File Transfer
+// Name: Vladimir Ceban
+// Date: Jan. 24, 2024
+// Title: Lab3 - Step 4 – TCP server with threads
+// Description: C program for a TCP server that accepts multiple client
+// connections and sends a file to each one. Modified version of Step 1 that
+// spawns a thread when receives a request from a client to handle it
+
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <netinet/in.h>

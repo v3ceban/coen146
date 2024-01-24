@@ -1,4 +1,9 @@
-// TCP Server for File Transfer
+// Name: Vladimir Ceban
+// Date: Jan. 24, 2024
+// Title: Lab3 - Step 1 – TCP server
+// Description: C program for a TCP server that accepts a client connection. The
+// server transfers a file to the client
+
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <netinet/in.h>
