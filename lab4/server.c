@@ -57,6 +57,7 @@ int main(int argc, char *argv[]) {
 
   // Sever continuously waits for messages from client, then prints incoming
   // messages.
+  int numPackets = 0;
   while (1) {
     int nr = recvfrom(sockfd, buffer, MAX_BUFFER_SIZE, 0,
                       (struct sockaddr *)&clienAddr, &addrLen);
@@ -66,6 +67,7 @@ int main(int argc, char *argv[]) {
     }
 
     printf("Received packet of length: %d\n", nr);
+    numPackets++;
 
     fwrite(buffer, sizeof(char), nr, file);
 
@@ -74,6 +76,9 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  printf("Received %d packets total. Transmission finished\n", numPackets);
+
+  // Close file
   fclose(file);
 
   return 0;

@@ -48,10 +48,16 @@ int main(int argc, char *argv[]) {
   // Read the file and send its contents to the server
   char buffer[1024];
   size_t bytesRead;
+
+  // Send file and count number of packets
+  int numPackets = 0;
   while ((bytesRead = fread(buffer, 1, sizeof(buffer), file)) > 0) {
     sendto(sockfd, buffer, bytesRead, 0, (struct sockaddr *)&servAddr,
            sizeof(struct sockaddr));
+    numPackets++;
   }
+
+  printf("File sent in %d packets\n", numPackets);
 
   // Close the file
   fclose(file);
