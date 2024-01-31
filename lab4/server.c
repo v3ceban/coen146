@@ -1,4 +1,9 @@
-// UDP Server
+// Name: Vladimir Ceban
+// Date: Jan. 24, 2024
+// Title: Lab4 - Step 1 – UDP server
+// Description: C program for a UDP server that awaits a connection from the
+// host and sends it a file it requests
+
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <stdio.h>

@@ -1,4 +1,9 @@
-// UDP Client
+// Name: Vladimir Ceban
+// Date: Jan. 24, 2024
+// Title: Lab4 - Step 2 – UDP client
+// Description: C program for a UDP server that connects to a server and sends a
+// file to it.
+
 #include <netdb.h>
 #include <netinet/in.h>
 #include <stdio.h>
