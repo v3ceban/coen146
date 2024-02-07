@@ -24,9 +24,9 @@ int calculateChecksum(char *buffer, int len) {
     checksum ^= buffer[i];
   }
 
-  if (rand() % 100 < 20) {
-    return -1;
-  }
+  // if (rand() % 100 < 20) {
+  //   return -1;
+  // }
 
   return checksum;
 }
