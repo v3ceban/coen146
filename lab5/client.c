@@ -86,16 +86,18 @@ int main(int argc, char *argv[]) {
            sizeof(struct sockaddr));
 
     // Receive the seq_ack from the server
-    while (receivedSeqAck != seq_ack) {
-      recvfrom(sockfd, &receivedSeqAck, sizeof(int), 0,
-               (struct sockaddr *)&servAddr, &addrLen);
-      sendto(sockfd, &packet, sizeof(Packet), 0, (struct sockaddr *)&servAddr,
-             sizeof(struct sockaddr));
-    }
+    recvfrom(sockfd, &receivedSeqAck, sizeof(int), 0,
+             (struct sockaddr *)&servAddr, &addrLen);
 
     // Print the seq_ack
     printf("%d. Sent seq: %d. Received ack: %d\n", count++, packet.seq_ack,
            receivedSeqAck);
+
+    // Resend the packet if seq_ack received is not the same as in sent packet
+    if (receivedSeqAck != packet.seq_ack) {
+      sendto(sockfd, &packet, sizeof(Packet), 0, (struct sockaddr *)&servAddr,
+             sizeof(struct sockaddr));
+    }
 
     // Update seq_ack for the next packet
     if (receivedSeqAck == 0) {
