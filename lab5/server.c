@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
            packet.seq_ack, packet.len, packet.checksum);
 
     int calculatedChecksum = calculateChecksum(packet.buffer, packet.len);
-    if (packet.checksum != calculatedChecksum || packet.len == 0) {
+    if (packet.checksum != calculatedChecksum) {
       printf(
           "Something went wrong.\nCalculated checksum: %d. Packet length: %d\n",
           calculatedChecksum, packet.len);
