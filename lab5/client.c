@@ -95,14 +95,16 @@ int main(int argc, char *argv[]) {
 
     // Resend the packet if received seq_ack is not the same as previously sent
     // one
-    while (receivedSeqAck != seq_ack) {
+    if (receivedSeqAck != seq_ack) {
       sendto(sockfd, &packet, sizeof(Packet), 0, (struct sockaddr *)&servAddr,
              sizeof(struct sockaddr));
     }
 
     // Update seq_ack for the next packet
-    if (receivedSeqAck == seq_ack) {
-      seq_ack = (seq_ack + 1) % 2;
+    if (receivedSeqAck == 0) {
+      seq_ack = 1;
+    } else {
+      seq_ack = 0;
     }
   }
 
