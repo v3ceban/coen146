@@ -10,13 +10,20 @@
 #include <stdlib.h>
 #include <sys/socket.h>
 
-#define MAX_BUFFER_SIZE 1024
-
 typedef struct {
   int seq_ack;
   int len;
   int checksum;
-} Header;
+  char buffer[1024];
+} Packet;
+
+int calculateChecksum(char *buffer, int len) {
+  int checksum = 0;
+  for (int i = 0; i < len; i++) {
+    checksum ^= buffer[i];
+  }
+  return checksum;
+}
 
 int main(int argc, char *argv[]) {
   // Get from the command line port#
@@ -29,7 +36,7 @@ int main(int argc, char *argv[]) {
   int sockfd;
 
   // Declare receiving buffer of size 1k bytes
-  char buffer[MAX_BUFFER_SIZE];
+  char buffer[1024];
 
   // Declare server address to which to bind for receiving messages and client
   // address to fill in sending address
@@ -69,33 +76,38 @@ int main(int argc, char *argv[]) {
   // Sever continuously waits for messages from client, then prints incoming
   // messages.
   while (1) {
-    Header header;
-    int nr = recvfrom(sockfd, &header, sizeof(Header), 0,
+    Packet packet;
+    int pr = recvfrom(sockfd, &packet, sizeof(Packet), 0,
                       (struct sockaddr *)&clienAddr, &addrLen);
-    if (nr < 0) {
+    if (pr < 0) {
       perror("Failure to receive data");
       exit(1);
     }
+
+    fwrite(packet.buffer, sizeof(char), packet.len, file);
 
     printf("Received packet with seq: %d, len: %d, checksum: %d\n",
-           header.seq_ack, header.len, header.checksum);
+           packet.seq_ack, packet.len, packet.checksum);
 
-    if (header.checksum != 0) {
-      header.seq_ack = header.seq_ack;
-    } else {
-      header.seq_ack = 0;
+    int calculatedChecksum = calculateChecksum(packet.buffer, packet.len);
+    if (packet.checksum != calculatedChecksum || packet.len == 0) {
+      printf(
+          "Something went wrong.\nCalculated checksum: %d. Packet length: %d\n",
+          calculatedChecksum, packet.len);
+      if (packet.seq_ack == 0) {
+        packet.seq_ack = 1;
+      } else {
+        packet.seq_ack = 0;
+      }
     }
 
-    nr = recvfrom(sockfd, buffer, MAX_BUFFER_SIZE, 0,
-                  (struct sockaddr *)&clienAddr, &addrLen);
-    if (nr < 0) {
-      perror("Failure to receive data");
+    int ps = sendto(sockfd, &packet, sizeof(Packet), 0,
+                    (struct sockaddr *)&clienAddr, addrLen);
+    if (ps < 0) {
+      perror("Failure to send data");
       exit(1);
     }
-
-    fwrite(buffer, sizeof(char), nr, file);
-
-    if (nr < MAX_BUFFER_SIZE) {
+    if (packet.len < 1024) {
       break;
     }
   }

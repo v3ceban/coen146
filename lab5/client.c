@@ -15,7 +15,21 @@ typedef struct {
   int seq_ack;
   int len;
   int checksum;
-} Header;
+  char buffer[1024];
+} Packet;
+
+int calculateChecksum(char *buffer, int len) {
+  int checksum = 0;
+  for (int i = 0; i < len; i++) {
+    checksum ^= buffer[i];
+  }
+
+  if (rand() % 100 < 20) {
+    return -1;
+  }
+
+  return checksum;
+}
 
 int main(int argc, char *argv[]) {
   // Get from the command line, server IP, port number, and file name
@@ -57,31 +71,37 @@ int main(int argc, char *argv[]) {
   }
 
   // Read the file and send its contents to the server
-  char buffer[1024];
-  size_t bytesRead;
+  Packet packet;
+  int seq_ack = 0;
+  int receivedSeqAck = -1;
 
-  while ((bytesRead = fread(buffer, 1, sizeof(buffer), file)) > 0) {
-    Header header;
-    header.seq_ack++;
-    header.len = bytesRead;
-    header.checksum = 0;
+  while ((packet.len = fread(packet.buffer, 1, sizeof(packet.buffer), file)) >
+         0) {
+    packet.seq_ack = seq_ack;
+    packet.checksum = calculateChecksum(packet.buffer, packet.len);
 
-    // Calculate the checksum using XOR operation
-    for (int i = 0; i < bytesRead; i++) {
-      header.checksum ^= buffer[i];
-    }
-
-    // Send the header and data to the server
-    sendto(sockfd, &header, sizeof(Header), 0, (struct sockaddr *)&servAddr,
-           sizeof(struct sockaddr));
-    sendto(sockfd, buffer, bytesRead, 0, (struct sockaddr *)&servAddr,
+    // Send the packet to the server
+    sendto(sockfd, &packet, sizeof(Packet), 0, (struct sockaddr *)&servAddr,
            sizeof(struct sockaddr));
 
-    // Receive and print the seq_ack from the server
-    int receivedSeqAck;
+    // Receive the seq_ack from the server
     recvfrom(sockfd, &receivedSeqAck, sizeof(int), 0,
              (struct sockaddr *)&servAddr, &addrLen);
-    printf("Received seq_ack: %d\n", receivedSeqAck);
+
+    // Print the seq_ack
+    printf("Sent seq: %d. Received ack: %d\n", packet.seq_ack, receivedSeqAck);
+
+    // Resend the packet if received seq_ack is not the same as previously sent
+    // one
+    if (receivedSeqAck != seq_ack) {
+      sendto(sockfd, &packet, sizeof(Packet), 0, (struct sockaddr *)&servAddr,
+             sizeof(struct sockaddr));
+    }
+
+    // Update seq_ack for the next packet
+    if (receivedSeqAck == seq_ack) {
+      seq_ack = (seq_ack + 1) % 2;
+    }
   }
 
   // Close the file
