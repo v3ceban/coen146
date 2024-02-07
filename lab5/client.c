@@ -4,18 +4,26 @@
 // Description: C program for a UDP server that connects to a server and sends a
 // file to it.
 
+#include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <time.h>
+#include <unistd.h>
+
+#define PACKET_SIZE                                                            \
+  1037 // Total size of the packet: header (12 bytes) + data (1024 bytes) + 1
+       // byte for null terminator
+#define DATA_SIZE 1024 // Size of data buffer in the packet
 
 typedef struct {
   int seq_ack;
   int len;
   int checksum;
-  char buffer[1024];
+  char data[DATA_SIZE];
 } Packet;
 
 int calculateChecksum(char *buffer, int len) {
@@ -23,92 +31,103 @@ int calculateChecksum(char *buffer, int len) {
   for (int i = 0; i < len; i++) {
     checksum ^= buffer[i];
   }
-
   if (rand() % 100 < 20) {
-    return -1;
+    return 0;
   }
-
   return checksum;
 }
 
 int main(int argc, char *argv[]) {
-  // Get from the command line, server IP, port number, and file name
   if (argc != 4) {
     printf("Usage: %s <ip of server> <port #> <file name>\n", argv[0]);
-    exit(0);
+    exit(1);
   }
 
-  // Declare socket file descriptor. All Unix I/O streams are referenced by
-  // descriptors
   int sockfd;
-
-  // Declare server address
   struct sockaddr_in servAddr;
   socklen_t addrLen = sizeof(struct sockaddr);
-
-  // Converts domain names into numerical IP addresses via DNS
   struct hostent *host;
-  host = (struct hostent *)gethostbyname(
-      argv[1]); // You may use "localhost" or "127.0.0.1": loopback IP address
+  host = (struct hostent *)gethostbyname(argv[1]);
 
-  // Open a socket, if successful, returns a descriptor associated with an
-  // endpoint
   if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
     perror("Failure to setup an endpoint socket");
     exit(1);
   }
 
-  // Set the server address to send using socket addressing structure
+  memset(&servAddr, 0, sizeof(servAddr));
   servAddr.sin_family = AF_INET;
   servAddr.sin_port = htons(atoi(argv[2]));
   servAddr.sin_addr = *((struct in_addr *)host->h_addr);
 
-  // Open the file in binary mode for reading
   FILE *file = fopen(argv[3], "rb");
   if (file == NULL) {
     perror("Failure to open the file");
     exit(1);
   }
 
-  // Read the file and send its contents to the server
   Packet packet;
-  int seq_ack = 0;
-  int receivedSeqAck = -1;
-  int count = 0;
+  int seq = 0;
+  int lastPacketSent = 0;
+  int resendCounter = 0;
 
-  while ((packet.len = fread(packet.buffer, 1, sizeof(packet.buffer), file)) >
-         0) {
-    packet.seq_ack = seq_ack;
-    packet.checksum = calculateChecksum(packet.buffer, packet.len);
-
-    // Send the packet to the server
-    sendto(sockfd, &packet, sizeof(Packet), 0, (struct sockaddr *)&servAddr,
-           sizeof(struct sockaddr));
-
-    // Receive the seq_ack from the server
-    recvfrom(sockfd, &receivedSeqAck, sizeof(int), 0,
-             (struct sockaddr *)&servAddr, &addrLen);
-
-    // Print the seq_ack
-    printf("%d. Sent seq: %d. Received ack: %d\n", count++, packet.seq_ack,
-           receivedSeqAck);
-
-    // Resend the packet if seq_ack received is not the same as in sent packet
-    if (receivedSeqAck != packet.seq_ack) {
-      sendto(sockfd, &packet, sizeof(Packet), 0, (struct sockaddr *)&servAddr,
-             sizeof(struct sockaddr));
+  while (!feof(file)) {
+    memset(&packet, 0, sizeof(Packet));
+    packet.seq_ack = seq;
+    packet.len = fread(packet.data, 1, DATA_SIZE, file);
+    packet.checksum = calculateChecksum(packet.data, packet.len);
+    if (sendto(sockfd, &packet, PACKET_SIZE, 0, (struct sockaddr *)&servAddr,
+               addrLen) < 0) {
+      perror("Error in sending packet");
+      exit(1);
     }
+    lastPacketSent = seq;
+    printf("Sent packet with seq: %d, checksum: %d\n", seq, packet.checksum);
+    // Set a timeout for receiving ACK
+    struct timeval tv;
+    tv.tv_sec = 0;    // Timeout value in seconds
+    tv.tv_usec = 500; // Timeout value in miliseconds
 
-    // Update seq_ack for the next packet
-    if (receivedSeqAck == 0) {
-      seq_ack = 1;
+    setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv,
+               sizeof(struct timeval));
+
+    // Wait for ACK
+    Packet ackPacket;
+    if (recvfrom(sockfd, &ackPacket, PACKET_SIZE, 0, NULL, NULL) < 0) {
+      // Timeout occurred, resend the packet
+      printf("Timeout occurred. Resending packet with seq: %d\n",
+             lastPacketSent);
+      resendCounter++;
+      if (resendCounter > 3) {
+        printf("Maximum retransmission attempts reached. Exiting...\n");
+        exit(1);
+      }
+      fseek(file, -packet.len,
+            SEEK_CUR); // Rollback file pointer to resend the packet
     } else {
-      seq_ack = 0;
+      // Check if received ACK is valid
+      if (ackPacket.seq_ack == seq && ackPacket.len == 0 &&
+          ackPacket.checksum == calculateChecksum("", 0)) {
+        printf("Received ACK %d for seq: %d\n", ackPacket.seq_ack, seq);
+        seq = 1 - seq;     // Toggle sequence number
+        resendCounter = 0; // Reset resend counter on successful transmission
+      } else {
+        // Invalid ACK received, ignore and wait for timeout
+        printf("Received invalid ACK %d. Ignoring and waiting for timeout.\n",
+               ackPacket.seq_ack);
+      }
     }
   }
 
-  // Close the file
+  // Send empty packet to signal end of file
+  Packet endPacket;
+  endPacket.seq_ack = seq;
+  endPacket.len = 0;
+  endPacket.checksum = calculateChecksum("", 0);
+  sendto(sockfd, &endPacket, PACKET_SIZE, 0, (struct sockaddr *)&servAddr,
+         addrLen);
+
   fclose(file);
+  close(sockfd);
 
   return 0;
 }

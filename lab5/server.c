@@ -8,15 +8,23 @@
 #include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/socket.h>
+#include <unistd.h>
+
+#define PACKET_SIZE                                                            \
+  1037 // Total size of the packet: header (12 bytes) + data (1024 bytes) + 1
+       // byte for null terminator
+#define DATA_SIZE 1024 // Size of data buffer in the packet
 
 typedef struct {
   int seq_ack;
   int len;
   int checksum;
-  char buffer[1024];
+  char data[DATA_SIZE];
 } Packet;
 
+// Function to calculate checksum
 int calculateChecksum(char *buffer, int len) {
   int checksum = 0;
   for (int i = 0; i < len; i++) {
@@ -26,40 +34,27 @@ int calculateChecksum(char *buffer, int len) {
 }
 
 int main(int argc, char *argv[]) {
-  // Get from the command line port#
   if (argc != 3) {
     printf("Usage: %s <port #> <file name>\n", argv[0]);
-    exit(0);
+    exit(1);
   }
-  // Declare socket file descriptor. All Unix I/O streams are referenced by
-  // descriptors
+
   int sockfd;
-
-  // Declare receiving buffer of size 1k bytes
   char buffer[1024];
-
-  // Declare server address to which to bind for receiving messages and client
-  // address to fill in sending address
   struct sockaddr_in servAddr, clienAddr;
   socklen_t addrLen = sizeof(struct sockaddr);
 
-  // Open a UDP socket, if successful, returns a descriptor associated with an
-  // endpoint
   if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
     perror("Failure to setup an endpoint socket");
     exit(1);
   }
 
-  // Setup the server address to bind using socket addressing structure
+  memset(&servAddr, 0, sizeof(servAddr));
   servAddr.sin_family = AF_INET;
   servAddr.sin_port = htons(atoi(argv[1])); // Port 5000 is assigned
-  servAddr.sin_addr.s_addr =
-      INADDR_ANY; // Local IP address of any interface is assigned (generally
-                  // one interface IP address)
+  servAddr.sin_addr.s_addr = INADDR_ANY;
 
-  // Set address/port of server endpoint for socket socket descriptor
-  if ((bind(sockfd, (struct sockaddr *)&servAddr, sizeof(struct sockaddr))) <
-      0) {
+  if (bind(sockfd, (struct sockaddr *)&servAddr, sizeof(servAddr)) < 0) {
     perror("Failure to bind server address to the endpoint socket");
     exit(1);
   } else {
@@ -72,50 +67,63 @@ int main(int argc, char *argv[]) {
     perror("Failure to open file");
     exit(1);
   }
-  int count = 0;
-  // Sever continuously waits for messages from client, then prints incoming
-  // messages.
+
+  Packet ackPacket;
+  int expectedSeq = 0;
+
   while (1) {
-    Packet packet;
-    int pr = recvfrom(sockfd, &packet, sizeof(Packet), 0,
-                      (struct sockaddr *)&clienAddr, &addrLen);
-    if (pr < 0) {
-      perror("Failure to receive data");
+    Packet receivedPacket;
+    if (recvfrom(sockfd, &receivedPacket, PACKET_SIZE, 0,
+                 (struct sockaddr *)&clienAddr, &addrLen) < 0) {
+      perror("Error in receiving packet");
       exit(1);
     }
 
-    printf("%d. Received packet with seq: %d, len: %d, checksum: %d\n", count++,
-           packet.seq_ack, packet.len, packet.checksum);
+    // Validate checksum
+    int calculatedChecksum =
+        calculateChecksum(receivedPacket.data, receivedPacket.len);
+    if (receivedPacket.checksum != calculatedChecksum) {
+      printf("Checksum mismatch. Expected: %d. Received: %d. Packet ignored.\n",
+             receivedPacket.checksum, calculatedChecksum);
+      continue;
+    }
 
-    int calculatedChecksum = calculateChecksum(packet.buffer, packet.len);
-    if (packet.checksum != calculatedChecksum) {
+    // Validate sequence number
+    if (receivedPacket.seq_ack != expectedSeq) {
       printf(
-          "Something went wrong.\nCalculated checksum: %d. Packet length: %d\n",
-          calculatedChecksum, packet.len);
-      if (packet.seq_ack == 0) {
-        packet.seq_ack = 1;
-      } else {
-        packet.seq_ack = 0;
-      }
-    } else {
-      fwrite(packet.buffer, sizeof(char), packet.len, file);
+          "Invalid sequence number. Expected: %d. Received: %d. ACK ignored.\n",
+          expectedSeq, receivedPacket.seq_ack);
+      // Resend last ACK
+      sendto(sockfd, &ackPacket, PACKET_SIZE, 0, (struct sockaddr *)&clienAddr,
+             addrLen);
+      continue;
     }
 
-    pr = sendto(sockfd, &packet, sizeof(Packet), 0,
-                (struct sockaddr *)&clienAddr, addrLen);
-    if (pr < 0) {
-      perror("Failure to send data");
-      exit(1);
-    }
-    if (packet.len < 1024) {
+    if (receivedPacket.len == 0) {
+      printf("End of file signal received. Exiting...\n");
       break;
     }
+
+    // Write data to file
+    fwrite(receivedPacket.data, 1, receivedPacket.len, file);
+    fflush(file);
+
+    // Prepare ACK packet
+    ackPacket.seq_ack = expectedSeq;
+    ackPacket.len = 0;
+    ackPacket.checksum = calculateChecksum("", 0);
+
+    // Send ACK
+    sendto(sockfd, &ackPacket, PACKET_SIZE, 0, (struct sockaddr *)&clienAddr,
+           addrLen);
+    printf("Sent ACK %d for seq: %d\n", ackPacket.seq_ack, expectedSeq);
+
+    // Toggle sequence number
+    expectedSeq = 1 - expectedSeq;
   }
 
-  printf("Transmission finished\n");
-
-  // Close file
   fclose(file);
+  close(sockfd);
 
   return 0;
 }
