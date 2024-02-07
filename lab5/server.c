@@ -92,7 +92,6 @@ int main(int argc, char *argv[]) {
       printf(
           "Something went wrong.\nCalculated checksum: %d. Packet length: %d\n",
           calculatedChecksum, packet.len);
-      count--;
       if (packet.seq_ack == 0) {
         packet.seq_ack = 1;
       } else {
