@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) {
     perror("Failure to open file");
     exit(1);
   }
-
+  int count = 0;
   // Sever continuously waits for messages from client, then prints incoming
   // messages.
   while (1) {
@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    printf("Received packet with seq: %d, len: %d, checksum: %d\n",
+    printf("%d. Received packet with seq: %d, len: %d, checksum: %d\n", count++,
            packet.seq_ack, packet.len, packet.checksum);
 
     int calculatedChecksum = calculateChecksum(packet.buffer, packet.len);

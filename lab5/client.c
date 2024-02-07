@@ -74,6 +74,7 @@ int main(int argc, char *argv[]) {
   Packet packet;
   int seq_ack = 0;
   int receivedSeqAck = -1;
+  int count = 0;
 
   while ((packet.len = fread(packet.buffer, 1, sizeof(packet.buffer), file)) >
          0) {
@@ -89,7 +90,8 @@ int main(int argc, char *argv[]) {
              (struct sockaddr *)&servAddr, &addrLen);
 
     // Print the seq_ack
-    printf("Sent seq: %d. Received ack: %d\n", packet.seq_ack, receivedSeqAck);
+    printf("%d. Sent seq: %d. Received ack: %d\n", count++, packet.seq_ack,
+           receivedSeqAck);
 
     // Resend the packet if received seq_ack is not the same as previously sent
     // one
