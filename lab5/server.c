@@ -1,6 +1,6 @@
 // Name: Vladimir Ceban
-// Date: Jan. 24, 2024
-// Title: Lab4 - Step 1 – UDP server
+// Date: Feb. 6, 2024
+// Title: Lab5 - Step 1 – UDP server
 // Description: C program for a UDP server that awaits a connection from the
 // host and sends it a file it requests
 
@@ -11,6 +11,12 @@
 #include <sys/socket.h>
 
 #define MAX_BUFFER_SIZE 1024
+
+typedef struct {
+  int seq_ack;
+  int len;
+  int checksum;
+} Header;
 
 int main(int argc, char *argv[]) {
   // Get from the command line port#
@@ -62,17 +68,30 @@ int main(int argc, char *argv[]) {
 
   // Sever continuously waits for messages from client, then prints incoming
   // messages.
-  int numPackets = 0;
   while (1) {
-    int nr = recvfrom(sockfd, buffer, MAX_BUFFER_SIZE, 0,
+    Header header;
+    int nr = recvfrom(sockfd, &header, sizeof(Header), 0,
                       (struct sockaddr *)&clienAddr, &addrLen);
     if (nr < 0) {
       perror("Failure to receive data");
       exit(1);
     }
 
-    printf("Received packet of length: %d\n", nr);
-    numPackets++;
+    printf("Received packet with seq: %d, len: %d, checksum: %d\n",
+           header.seq_ack, header.len, header.checksum);
+
+    if (header.checksum != 0) {
+      header.seq_ack = header.seq_ack;
+    } else {
+      header.seq_ack = 0;
+    }
+
+    nr = recvfrom(sockfd, buffer, MAX_BUFFER_SIZE, 0,
+                  (struct sockaddr *)&clienAddr, &addrLen);
+    if (nr < 0) {
+      perror("Failure to receive data");
+      exit(1);
+    }
 
     fwrite(buffer, sizeof(char), nr, file);
 
@@ -81,7 +100,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  printf("Received %d packets total. Transmission finished\n", numPackets);
+  printf("Transmission finished\n");
 
   // Close file
   fclose(file);

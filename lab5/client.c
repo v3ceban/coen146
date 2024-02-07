@@ -1,6 +1,6 @@
 // Name: Vladimir Ceban
-// Date: Jan. 24, 2024
-// Title: Lab4 - Step 2 – UDP client
+// Date: Feb. 6, 2024
+// Title: Lab5 - Step 2 – UDP client
 // Description: C program for a UDP server that connects to a server and sends a
 // file to it.
 
@@ -10,6 +10,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+
+typedef struct {
+  int seq_ack;
+  int len;
+  int checksum;
+} Header;
 
 int main(int argc, char *argv[]) {
   // Get from the command line, server IP, port number, and file name
@@ -54,15 +60,29 @@ int main(int argc, char *argv[]) {
   char buffer[1024];
   size_t bytesRead;
 
-  // Send file and count number of packets
-  int numPackets = 0;
   while ((bytesRead = fread(buffer, 1, sizeof(buffer), file)) > 0) {
+    Header header;
+    header.seq_ack++;
+    header.len = bytesRead;
+    header.checksum = 0;
+
+    // Calculate the checksum using XOR operation
+    for (int i = 0; i < bytesRead; i++) {
+      header.checksum ^= buffer[i];
+    }
+
+    // Send the header and data to the server
+    sendto(sockfd, &header, sizeof(Header), 0, (struct sockaddr *)&servAddr,
+           sizeof(struct sockaddr));
     sendto(sockfd, buffer, bytesRead, 0, (struct sockaddr *)&servAddr,
            sizeof(struct sockaddr));
-    numPackets++;
-  }
 
-  printf("File sent in %d packets\n", numPackets);
+    // Receive and print the seq_ack from the server
+    int receivedSeqAck;
+    recvfrom(sockfd, &receivedSeqAck, sizeof(int), 0,
+             (struct sockaddr *)&servAddr, &addrLen);
+    printf("Received seq_ack: %d\n", receivedSeqAck);
+  }
 
   // Close the file
   fclose(file);
