@@ -89,6 +89,8 @@ int main(int argc, char *argv[]) {
     while (receivedSeqAck != seq_ack) {
       recvfrom(sockfd, &receivedSeqAck, sizeof(int), 0,
                (struct sockaddr *)&servAddr, &addrLen);
+      sendto(sockfd, &packet, sizeof(Packet), 0, (struct sockaddr *)&servAddr,
+             sizeof(struct sockaddr));
     }
 
     // Print the seq_ack
