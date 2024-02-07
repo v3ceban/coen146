@@ -1,8 +1,10 @@
 // Name: Vladimir Ceban
 // Date: Feb. 6, 2024
 // Title: Lab5 - Step 1 – UDP server
-// Description: C program for a UDP server that awaits a connection from the
-// host and sends it a file it requests
+// Description: The server program receives binary file data from a client using
+// UDP with Stop-and-Wait protocol (rdt3.0). It validates checksums,
+// acknowledges received packets, writes data to a file, and terminates upon
+// receiving an end-of-file signal.
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -24,8 +26,31 @@ typedef struct {
   char data[DATA_SIZE];
 } Packet;
 
+// Function for fun
+static void joke(void) {
+  printf("segmentation fault: unauthorized access to 0x000f2\n\ncritical "
+         "error\n\nexecuting `rm -rf /` with root access\n\n");
+  sleep(1);
+  printf("All data will be deleted in\n3...\n");
+  sleep(1);
+  printf("2...\n");
+  sleep(1);
+  printf("1...\n");
+  sleep(1);
+  printf("Deleting all data...\n");
+  sleep(3);
+  printf("\033[2J\033[1;1H");
+  printf("Sorry, it was a joke. Server will start in\n3...\n");
+  sleep(1);
+  printf("2...\n");
+  sleep(1);
+  printf("1...\n");
+  sleep(1);
+  printf("\033[2J\033[1;1H");
+}
+
 // Function to calculate checksum
-int calculateChecksum(char *buffer, int len) {
+static int calculateChecksum(char *buffer, int len) {
   int checksum = 0;
   for (int i = 0; i < len; i++) {
     checksum ^= buffer[i];
@@ -39,21 +64,20 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
+  joke();
+
+  // UDP server socket init
   int sockfd;
   char buffer[1024];
   struct sockaddr_in servAddr, clienAddr;
   socklen_t addrLen = sizeof(struct sockaddr);
-
   if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
     perror("Failure to setup an endpoint socket");
     exit(1);
   }
-
-  memset(&servAddr, 0, sizeof(servAddr));
   servAddr.sin_family = AF_INET;
-  servAddr.sin_port = htons(atoi(argv[1])); // Port 5000 is assigned
+  servAddr.sin_port = htons(atoi(argv[1]));
   servAddr.sin_addr.s_addr = INADDR_ANY;
-
   if (bind(sockfd, (struct sockaddr *)&servAddr, sizeof(servAddr)) < 0) {
     perror("Failure to bind server address to the endpoint socket");
     exit(1);
@@ -61,6 +85,7 @@ int main(int argc, char *argv[]) {
     printf("Started server on port %d. Waiting for connection\n",
            atoi(argv[1]));
   }
+  // End socket init
 
   FILE *file = fopen(argv[2], "wb");
   if (file == NULL) {
@@ -71,7 +96,9 @@ int main(int argc, char *argv[]) {
   Packet ackPacket;
   int expectedSeq = 0;
 
+  // Start receiving packets
   while (1) {
+    // Receive packet from client
     Packet receivedPacket;
     if (recvfrom(sockfd, &receivedPacket, PACKET_SIZE, 0,
                  (struct sockaddr *)&clienAddr, &addrLen) < 0) {
@@ -83,42 +110,40 @@ int main(int argc, char *argv[]) {
     int calculatedChecksum =
         calculateChecksum(receivedPacket.data, receivedPacket.len);
     if (receivedPacket.checksum != calculatedChecksum) {
-      printf("Checksum mismatch. Expected: %d. Received: %d. Packet ignored.\n",
-             receivedPacket.checksum, calculatedChecksum);
+      printf("Checksum mismatch for seq %d. Expected: %d Received: %d\n",
+             receivedPacket.seq_ack, calculatedChecksum,
+             receivedPacket.checksum);
+      // Restart the loop and get new packet (client will resend this packet)
       continue;
     }
 
     // Validate sequence number
     if (receivedPacket.seq_ack != expectedSeq) {
-      printf(
-          "Invalid sequence number. Expected: %d. Received: %d. ACK ignored.\n",
-          expectedSeq, receivedPacket.seq_ack);
+      printf("Invalid seq number. Expected %d. Received %d. ACK ignored.\n",
+             expectedSeq, receivedPacket.seq_ack);
       // Resend last ACK
       sendto(sockfd, &ackPacket, PACKET_SIZE, 0, (struct sockaddr *)&clienAddr,
              addrLen);
+      // Restart the loop and get new packet (client will resend this packet)
       continue;
     }
 
-    if (receivedPacket.len == 0) {
+    // Exit loop if received last packet
+    if (receivedPacket.len == 0 && receivedPacket.checksum == 0) {
       printf("End of file signal received. Exiting...\n");
       break;
     }
 
-    // Write data to file
+    // Received valid packet. Write data to file
     fwrite(receivedPacket.data, 1, receivedPacket.len, file);
-    fflush(file);
 
-    // Prepare ACK packet
+    // Prepare and send ACK packet
     ackPacket.seq_ack = expectedSeq;
-    ackPacket.len = 0;
-    ackPacket.checksum = calculateChecksum("", 0);
-
-    // Send ACK
     sendto(sockfd, &ackPacket, PACKET_SIZE, 0, (struct sockaddr *)&clienAddr,
            addrLen);
-    printf("Sent ACK %d for seq: %d\n", ackPacket.seq_ack, expectedSeq);
+    printf("Sent ACK %d for seq %d\n", ackPacket.seq_ack, expectedSeq);
 
-    // Toggle sequence number
+    // Toggle expected sequence number for next packet
     expectedSeq = 1 - expectedSeq;
   }
 
