@@ -84,8 +84,6 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    fwrite(packet.buffer, sizeof(char), packet.len, file);
-
     printf("Received packet with seq: %d, len: %d, checksum: %d\n",
            packet.seq_ack, packet.len, packet.checksum);
 
@@ -99,6 +97,8 @@ int main(int argc, char *argv[]) {
       } else {
         packet.seq_ack = 0;
       }
+    } else {
+      fwrite(packet.buffer, sizeof(char), packet.len, file);
     }
 
     int ps = sendto(sockfd, &packet, sizeof(Packet), 0,
