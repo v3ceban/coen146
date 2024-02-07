@@ -101,9 +101,9 @@ int main(int argc, char *argv[]) {
       fwrite(packet.buffer, sizeof(char), packet.len, file);
     }
 
-    int ps = sendto(sockfd, &packet, sizeof(Packet), 0,
-                    (struct sockaddr *)&clienAddr, addrLen);
-    if (ps < 0) {
+    pr = sendto(sockfd, &packet, sizeof(Packet), 0,
+                (struct sockaddr *)&clienAddr, addrLen);
+    if (pr < 0) {
       perror("Failure to send data");
       exit(1);
     }
