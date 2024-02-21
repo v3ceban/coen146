@@ -51,7 +51,9 @@ void print_costs(void) {
   printf("Cost Table:\n");
   for (int i = 0; i < N; i++) {
     for (int j = 0; j < N; j++) {
+      pthread_mutex_lock(&lock);
       printf("%d ", costs[i][j]);
+      pthread_mutex_unlock(&lock);
     }
     printf("\n");
   }
@@ -97,6 +99,13 @@ void *run_link_state(void *arg) {
 
     for (i = 1; i < N; i++) {
       // find closest node
+      min = INFINITE;
+      for (j = 0; j < N; j++) {
+        if (taken[j] == 0 && distances[j] < min) {
+          min = distances[j];
+          spot = j;
+        }
+      }
 
       // recalculate distances
       for (j = 0; j < N; j++) {
@@ -192,12 +201,12 @@ int main(int argc, char *argv[]) {
   pthread_create(&thr2, NULL, run_link_state, NULL);
 
   // read changes from the keyboard
-  for (i = 0; i < 3; i++) {
+  while (1) {
     printf("any changes? ");
     scanf("%d%d", &id, &cost);
     if (id >= N || id == myid) {
       printf("wrong id\n");
-      break;
+      continue;
     }
 
     pthread_mutex_lock(&lock);
