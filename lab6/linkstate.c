@@ -49,14 +49,14 @@ pthread_mutex_t lock;
 // print costs
 void print_costs(void) {
   printf("Cost Table:\n");
+  pthread_mutex_lock(&lock);
   for (int i = 0; i < N; i++) {
     for (int j = 0; j < N; j++) {
-      pthread_mutex_lock(&lock);
       printf("%d ", costs[i][j]);
-      pthread_mutex_unlock(&lock);
     }
     printf("\n");
   }
+  pthread_mutex_unlock(&lock);
 }
 
 // receive info
