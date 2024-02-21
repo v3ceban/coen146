@@ -202,7 +202,7 @@ int main(int argc, char *argv[]) {
 
   // read changes from the keyboard
   while (1) {
-    printf("any changes? ");
+    printf("any changes?\n");
     scanf("%d%d", &id, &cost);
     if (id >= N || id == myid) {
       printf("wrong id\n");
