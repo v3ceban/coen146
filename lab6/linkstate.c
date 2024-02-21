@@ -63,8 +63,7 @@ void print_costs(void) {
 void *receive_info(void *arg) {
   int received_packet[3];
   while (1) {
-    recvfrom(sock, received_packet, sizeof(received_packet), 0,
-             (struct sockaddr *)&otheraddr, &addr_size);
+    recvfrom(sock, received_packet, sizeof(received_packet), 0, NULL, NULL);
     int sender_id = ntohl(received_packet[0]);
     int receiver_id = ntohl(received_packet[1]);
     int new_cost = ntohl(received_packet[2]);
@@ -106,6 +105,7 @@ void *run_link_state(void *arg) {
           spot = j;
         }
       }
+      taken[spot] = 1;
 
       // recalculate distances
       for (j = 0; j < N; j++) {
