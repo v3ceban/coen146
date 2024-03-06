@@ -56,3 +56,4 @@ dkms.conf
 server
 client
 linkstate
+*.pdf
